@@ -1,0 +1,140 @@
+load "iovtk"
+//matrix->func
+macro matrixtofunc(A,f) Uh f; for (int i=0;i<Th.nt;i++){    for ( int j=0; j<3; j++){    int X=Th[i][j].x; int Y=Th[i][j].y; f[][Vh(i,j)]=A(X,Y);    }      }//
+//file->matrix
+func real[int,int] readHBF( string  s )//read file
+{
+    ifstream in( s );
+    string header;
+    string ch(1);
+    int versio, rows, cols ;
+    in>> versio;
+    in>>rows;
+    in>>cols;
+    real [int,int] A(rows,cols);
+    for (int i=0;i<rows;i++)
+    {
+      for(int j=0;j<cols;j++)
+            in>>  A(i,j);
+    }
+    return A;
+}
+
+func real[int,int]  reducesize(real [int,int] A,int rows,int cols,int k)
+{
+  real[int,int] B(rows/k,cols/k);
+  for (int i=0;i<rows/k;i++)
+  {
+    for(int j=0;j<cols/k;j++)
+          B(i,j)=A(i,j);
+  }
+  return B;
+}
+
+
+
+macro filetofunc(s,f) real [int,int] A=readHBF( string  s );  matrixtofunc(A,f);//
+//------------------------------------------\\
+
+real[int,int] Gx0=readHBF( "data/rx.txt");
+real[int,int] Gy0=readHBF( "data/ry.txt");
+//real[int,int] Lena=readHBF( "rayure.txt");
+int n = Gx0.n;
+int m=  Gx0.m;
+int k=1;
+real[int,int] Gx=reducesize(Gx0,n,m,k);
+real[int,int] Gy=reducesize(Gy0,n,m,k);
+n/=k;
+m/=k;
+cout<<" Gx.n=" <<Gx.n<<endl;
+
+//------------------------------------------\\
+border C2 (t=0,n){x=t;y=0;label=2;}
+border C3 (t=0,m){x=n;y=t;label=2;}
+border C4 (t=n,0){x=t;y=m;label=2;}
+border C5 (t=m,0){x=0 ;y=t;label=2;}
+
+//mesh Th=buildmesh(C2(n-2)+C3(m-2)+C4(n-2)+C5(m-2));
+mesh Th=square(n,m,[(n-1)*x,(m-1)*y]);
+fespace Vh(Th, P1);
+Vh u, v;
+
+
+
+fespace Uh(Th, P1);
+
+
+
+func f=[x,y];
+macro grad(u) [dx(u), dy(u)]//
+
+//matrix ->function
+//------------------------------------------\\
+//matrixtofunc(Lena,lena);
+matrixtofunc(Gx,gx);
+matrixtofunc(Gy,gy);
+//------------------------------------------\\
+
+func G=[gx,gy];
+
+problem Reconstitution(u,v) =
+	  int2d(Th)(grad(u)'*grad(v))
+  - int2d(Th)(G'*grad(v));
+
+Reconstitution;
+
+real t=int2d(Th)(u)/n/m;
+Vh up=u-t;
+cout<<"moyenne de up="<<t<<endl;
+
+int[int] Order = [1];
+string DataName = "u";
+//savevtk("u.vtu", Th, up, dataname=DataName, order=Order);
+/*
+t=int2d(Th)(lena)/n/m;
+Vh lenap=lena-t;
+cout<<"moyenne de lenap="<<t<<endl;
+
+int[int] Order = [1];
+string DataName = "u";
+Vh uo=-u;
+savevtk("u.vtu", Th, uo, dataname=DataName, order=Order);
+
+
+/*
+ofstream gnu("gnu.dat");
+for (int i=0;i<Th.nt;i++)
+{
+      for ( int j=0; j<3; j++)
+      {
+              int X=Th[i][j].x;
+              int Y=Th[i][j].y;
+              gnu<<X<<" ";
+              gnu<<Y<<" ";
+              gnu<<u[][Vh(i,j)] <<endl;
+      }
+    //  cout<<endl;
+}
+*/
+
+/*
+real errl2=int2d(Th)((up-lenap)^2);
+cout<<"L2 error"<<sqrt(errl2)/n/m<<endl;//mettre racine carre
+
+real ecart =int2d(Th)( abs(up-lenap)  );
+cout<<"Ecart moyen"<<ecart/n/m<<endl;
+
+real errh1 =int2d(Th)(  (up-lenap)^2 +(dx(up)-dx(lenap))^2 +(dy(up)-dy(lenap) )^2 );
+cout<<"H1 error"<<sqrt(errh1)/n/m<<endl;
+*/
+
+for(int i =0 ;i<3;i++)
+{
+plot(Th,wait=1);
+plot(Th, gx,  fill =1, value=0,wait =1,cmm="gx");
+plot(Th, gy,  fill =1, value=0,wait =1,cmm="gy");
+plot(Th, u,  fill =1, value=0,wait =1,cmm="u");
+plot(Th, up,  fill =1, value=0,wait =1,cmm="up");
+//Vh diff=abs(lenap-up);
+//plot(Th, diff,  fill =1, value=0,wait =1,cmm="lenp-up");
+}
