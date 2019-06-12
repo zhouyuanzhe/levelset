@@ -45,6 +45,9 @@ void readHBF( std::string const& s )
 	}
 	nom+=".txt";
     ofstream out(nom,ios::out | ios::trunc);
+    out<<version<<' ';
+    out<<rows<<' ';
+    out<<cols<<' ';
     for (int i=0;i<size;++i)
 	{
 		out<<x[i]<<' ';
